@@ -1,9 +1,5 @@
 # Watch Hunter
 
-[![Daily Watch Hunter](https://github.com/alexgarciasilva/watch-hunter/actions/workflows/daily_watch_hunter.yml/badge.svg)](https://github.com/alexgarciasilva/watch-hunter/actions/workflows/daily_watch_hunter.yml)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](tests)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](pyproject.toml)
-
 Automated production-ready search and alert engine for luxury watch listings across **eBay** and **Reddit r/Watchexchange**, running daily via GitHub Actions with rich HTML email digests.
 
 ---

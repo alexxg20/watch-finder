@@ -1,0 +1,86 @@
+name: Daily Watch Hunter
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Every day at 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in Dry Run mode (logs digest to console without sending emails)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  hunt:
+    name: Search Omega Aqua Terra Listings
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Restore persistent deduplication state
+        uses: actions/cache/restore@v4
+        id: state-cache
+        with:
+          path: data/seen_listings.json
+          key: watch-hunter-state-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            watch-hunter-state-${{ runner.os }}-
+            watch-hunter-state-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Watch Hunter
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          EBAY_MARKETPLACE_ID: ${{ secrets.EBAY_MARKETPLACE_ID || 'EBAY_DE' }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT || 'python:watch_hunter:v0.1.0 (by /u/watch_hunter_notifier)' }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL || 'Watch Hunter <onboarding@resend.dev>' }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL || '2alex.garcia2@gmail.com' }}
+          STATE_FILE_PATH: data/seen_listings.json
+          PYTHONPATH: src
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m watch_hunter.cli --dry-run
+          else
+            python -m watch_hunter.cli
+          fi
+
+      - name: Save persistent deduplication state to Cache
+        if: always() && github.event.inputs.dry_run != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data/seen_listings.json
+          key: watch-hunter-state-${{ runner.os }}-${{ github.run_id }}
+
+      - name: Upload state artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seen-listings-state
+          path: data/seen_listings.json
+          retention-days: 30
+          if-no-files-found: ignore

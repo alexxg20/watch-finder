@@ -49,9 +49,9 @@ watch-hunter/
 ```
 
 ### 1. Source Adapters
-- **eBay Adapter (`EbayAdapter`):** Uses the official eBay Browse REST API with OAuth2 Client Credentials grant (`https://api.ebay.com/buy/browse/v1/item_summary/search`). Caches tokens, respects rate limits (`Retry-After`), and queries European marketplaces (`EBAY_DE`, `EBAY_GB`, `EBAY_IT`, etc.).
-- **Reddit Adapter (`RedditAdapter`):** Uses Reddit's OAuth API to search `r/Watchexchange` for active `[WTS]` listings, filtering out sold (`[SOLD]`) and buy-only (`[WTB]`) posts. Extracts prices and currencies (`€`, `£`, `CHF`, `$`), conditions, and locations using resilient regex.
-- **Chrono24 Adapter Stub (`Chrono24AdapterStub`):** In compliance with Chrono24 Terms of Service, direct scraping without an approved commercial API is disabled. Instead, an isolated import pipeline is provided for saved-search JSON exports and user-forwarded Chrono24 email alerts.
+- **eBay:** Official Browse API with OAuth2 credentials.
+- **Reddit:** Read-only search of `r/Watchexchange` through Reddit’s API.
+- **Chrono24:** Import-only support for saved-search JSON exports or forwarded email alerts; no scraping.
 
 ### 2. Normalized Listing Schema
 Every listing from any source is normalized into a unified model:
@@ -68,13 +68,8 @@ Every listing from any source is normalized into a unified model:
 - `location: str | None`
 - `image_url: str | None`
 
-### 3. Deduplication & Persistent Storage Choice
-**Why File-Based JSON Storage (`JsonFileStorage`) with GitHub Actions Cache:**
-- **Zero External Infrastructure:** Does not require provisioning cloud databases (Redis, DynamoDB, PostgreSQL) or managing external database credentials that can expire.
-- **Auditability & Simplicity:** State is stored in a clean, human-readable JSON file (`data/seen_listings.json`), recording first-seen/last-seen timestamps and listing metadata.
-- **Atomic File Operations:** Writes use temporary files with atomic directory replacement (`os.replace`) to eliminate the risk of state corruption.
-- **Native GitHub Actions Integration:** Cached between workflow runs using `actions/cache` and retained in GitHub Actions Artifacts.
-- **Automatic Pruning:** Built-in pruning removes records older than 90 days to keep file size minimal over years of operation.
+### 3. Deduplication
+The app stores notified listing IDs and basic metadata in `data/seen_listings.json`. GitHub Actions restores and saves this file between runs, while atomic writes and automatic pruning keep the state reliable and small.
 
 ---
 
@@ -157,23 +152,3 @@ In your GitHub repository, navigate to **Settings > Secrets and variables > Acti
 - `REDDIT_CLIENT_SECRET` (optional)
 - `RESEND_API_KEY` (or SMTP secrets: `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`)
 - `NOTIFICATION_EMAIL` (optional, defaults to `2alex.garcia2@gmail.com`)
-
----
-
-## Verification & Testing
-
-### Running Tests
-```bash
-pytest -v
-```
-
-### Running Formatter & Linter
-```bash
-ruff format --check
-ruff check
-```
-
-### Running Type Checker
-```bash
-mypy src tests
-```
